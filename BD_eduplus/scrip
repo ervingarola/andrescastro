@@ -1,0 +1,173 @@
+USE master;
+GO
+IF DB_ID('escuela_andres_castro') IS NOT NULL DROP DATABASE escuela_andres_castro;
+GO
+CREATE DATABASE escuela_andres_castro COLLATE Latin1_General_CI_AS;
+GO
+USE escuela_andres_castro;
+GO
+
+
+-- =============================================
+-- 1. TABLAS MEJORADAS
+-- =============================================
+CREATE TABLE usuarios (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    nombre_completo VARCHAR(150) NOT NULL,
+    usuario VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin','maestro','estudiante')),
+    grado CHAR(2) NULL CHECK (grado IN ('7','8','9','10','11')),
+    fecha_creacion DATETIME2 DEFAULT GETDATE()
+);
+GO
+
+CREATE TABLE materias (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE
+);
+GO
+
+-- Asignación: un profesor imparte una materia en un grado
+CREATE TABLE asignaciones (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    maestro_id INT NOT NULL,
+    materia_id INT NOT NULL,
+    grado CHAR(2) NOT NULL CHECK (grado IN ('7','8','9','10','11')),
+    CONSTRAINT FK_asig_maestro FOREIGN KEY (maestro_id) REFERENCES usuarios(id),
+    CONSTRAINT FK_asig_materia FOREIGN KEY (materia_id) REFERENCES materias(id),
+    UNIQUE(maestro_id, materia_id, grado)
+);
+GO
+
+-- NUEVA TABLA CLAVE: Matrícula de estudiantes en asignaciones
+CREATE TABLE matricula_estudiantes (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    estudiante_id INT NOT NULL,
+    asignacion_id INT NOT NULL,
+    fecha_matricula DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_mat_estudiante FOREIGN KEY (estudiante_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT FK_mat_asignacion FOREIGN KEY (asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE,
+    UNIQUE(estudiante_id, asignacion_id) -- Un estudiante no se matricula 2 veces en lo mismo
+);
+GO
+
+-- Notas: ahora sí, por estudiante y asignación específica
+CREATE TABLE notas (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    matricula_id INT NOT NULL, -- Cambiamos: ahora referencia a matricula_estudiantes
+    periodo1 DECIMAL(5,2) NULL CHECK (periodo1 BETWEEN 0 AND 100),
+    periodo2 DECIMAL(5,2) NULL CHECK (periodo2 BETWEEN 0 AND 100),
+    periodo3 DECIMAL(5,2) NULL CHECK (periodo3 BETWEEN 0 AND 100),
+    CONSTRAINT FK_notas_matricula FOREIGN KEY (matricula_id) REFERENCES matricula_estudiantes(id) ON DELETE CASCADE,
+    UNIQUE(matricula_id)
+);
+GO
+
+-- Horario: por grado y asignación
+CREATE TABLE horario (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    asignacion_id INT NOT NULL,
+    dia VARCHAR(10) NOT NULL CHECK (dia IN ('Lunes','Martes','Miércoles','Jueves','Viernes')),
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    aula VARCHAR(20) NULL,
+    CONSTRAINT FK_horario_asignacion FOREIGN KEY (asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE
+);
+GO
+
+-- =============================================
+-- AUDITORÍA Y TRIGGERS (mantenemos igual, solo agrego para las nuevas tablas)
+-- =============================================
+CREATE TABLE auditoria_registro (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    tabla_afectada VARCHAR(50) NOT NULL,
+    registro_id INT NOT NULL,
+    accion VARCHAR(20) NOT NULL CHECK (accion IN ('INSERT','UPDATE','DELETE')),
+    usuario_registra VARCHAR(50) NULL,
+    fecha_registro DATETIME2 DEFAULT GETDATE(),
+    usuario_actualiza VARCHAR(50) NULL,
+    fecha_actualiza DATE NULL,
+    hora_actualiza TIME NULL
+);
+GO
+
+-- Triggers para todas las tablas (usuarios, materias, asignaciones, matricula, notas, horario)
+-- (Los triggers ya los tienes, solo agrega estos dos nuevos):
+
+CREATE OR ALTER TRIGGER tr_matricula_auditoria ON matricula_estudiantes
+AFTER INSERT, UPDATE, DELETE
+AS BEGIN
+    SET NOCOUNT ON;
+    DECLARE @accion VARCHAR(20) = CASE WHEN EXISTS(SELECT * FROM inserted) AND EXISTS(SELECT * FROM deleted) THEN 'UPDATE'
+                                      WHEN EXISTS(SELECT * FROM inserted) THEN 'INSERT' ELSE 'DELETE' END;
+    IF @accion = 'INSERT'
+        INSERT INTO auditoria_registro (tabla_afectada, registro_id, accion, usuario_registra)
+        SELECT 'matricula_estudiantes', id, 'INSERT', SYSTEM_USER FROM inserted;
+    ELSE
+        INSERT INTO auditoria_registro (tabla_afectada, registro_id, accion, usuario_actualiza, fecha_actualiza, hora_actualiza)
+        SELECT 'matricula_estudiantes', id, @accion, SYSTEM_USER, CAST(GETDATE() AS DATE), CAST(GETDATE() AS TIME) FROM deleted;
+END
+GO
+
+CREATE OR ALTER TRIGGER tr_horario_auditoria ON horario
+AFTER INSERT, UPDATE, DELETE
+AS BEGIN
+    SET NOCOUNT ON;
+    DECLARE @accion VARCHAR(20) = CASE WHEN EXISTS(SELECT * FROM inserted) AND EXISTS(SELECT * FROM deleted) THEN 'UPDATE'
+                                      WHEN EXISTS(SELECT * FROM inserted) THEN 'INSERT' ELSE 'DELETE' END;
+    IF @accion = 'INSERT'
+        INSERT INTO auditoria_registro (tabla_afectada, registro_id, accion, usuario_registra)
+        SELECT 'horario', id, 'INSERT', SYSTEM_USER FROM inserted;
+    ELSE
+        INSERT INTO auditoria_registro (tabla_afectada, registro_id, accion, usuario_actualiza, fecha_actualiza, hora_actualiza)
+        SELECT 'horario', id, @accion, SYSTEM_USER, CAST(GETDATE() AS DATE), CAST(GETDATE() AS TIME) FROM deleted;
+END
+GO
+
+
+USE escuela_andres_castro;
+GO
+
+-- =============================================
+-- VISTA DE AUDITORÍA COMPLETA (LA QUE USA TU PÁGINA)
+-- =============================================
+CREATE OR ALTER VIEW vw_auditoria_completa AS
+SELECT 
+    a.id AS id_auditoria,
+    a.fecha_registro AS fecha_hora,
+    a.accion,
+    a.tabla_afectada AS tabla,
+    COALESCE(
+        CASE a.tabla_afectada
+            WHEN 'usuarios' THEN u.nombre_completo
+            WHEN 'materias' THEN m.nombre
+            WHEN 'asignaciones' THEN CONCAT('Prof. ', prof.nombre_completo, ' - ', mat.nombre, ' (', asig.grado, '°)')
+            WHEN 'matricula_estudiantes' THEN CONCAT('Matrícula: ', est.nombre_completo, ' en ', mat2.nombre)
+            WHEN 'notas' THEN CONCAT(est2.nombre_completo, ' - ', mat3.nombre)
+            WHEN 'horario' THEN CONCAT('Horario: ', mat4.nombre, ' (', h.dia, ' ', h.hora_inicio, '-', h.hora_fin, ')')
+            ELSE 'ID: ' + CAST(a.registro_id AS VARCHAR(20))
+        END, 'Registro desconocido'
+    ) AS descripcion_registro,
+    ISNULL(a.usuario_registra, 'Sistema') AS usuario
+FROM auditoria_registro a
+LEFT JOIN usuarios u ON a.tabla_afectada = 'usuarios' AND a.registro_id = u.id
+LEFT JOIN materias m ON a.tabla_afectada = 'materias' AND a.registro_id = m.id
+LEFT JOIN asignaciones asig ON a.tabla_afectada = 'asignaciones' AND a.registro_id = asig.id
+LEFT JOIN usuarios prof ON asig.maestro_id = prof.id
+LEFT JOIN materias mat ON asig.materia_id = mat.id
+LEFT JOIN matricula_estudiantes me ON a.tabla_afectada = 'matricula_estudiantes' AND a.registro_id = me.id
+LEFT JOIN usuarios est ON me.estudiante_id = est.id
+LEFT JOIN asignaciones asig2 ON me.asignacion_id = asig2.id
+LEFT JOIN materias mat2 ON asig2.materia_id = mat2.id
+LEFT JOIN notas n ON a.tabla_afectada = 'notas' AND a.registro_id = n.id
+LEFT JOIN matricula_estudiantes me2 ON n.matricula_id = me2.id
+LEFT JOIN usuarios est2 ON me2.estudiante_id = est2.id
+LEFT JOIN asignaciones asig3 ON me2.asignacion_id = asig3.id
+LEFT JOIN materias mat3 ON asig3.materia_id = mat3.id
+LEFT JOIN horario h ON a.tabla_afectada = 'horario' AND a.registro_id = h.id
+LEFT JOIN asignaciones asig4 ON h.asignacion_id = asig4.id
+LEFT JOIN materias mat4 ON asig4.materia_id = mat4.id;
+GO
+
+PRINT '¡VISTA vw_auditoria_completa CREADA CORRECTAMENTE!';

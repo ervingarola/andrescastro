@@ -1,0 +1,267 @@
+/* ================================================================= */
+/* SISTEMA DE GESTIÓN ACADÉMICA - ESCUELA ANDRÉS CASTRO 2025        */
+/* CSS FINAL OFICIAL - Diseñado por Erving Aarón Artola Vargas      */
+/* ================================================================= */
+
+/* ====================== LOGIN ====================== */
+body.login-body {
+    background: linear-gradient(135deg, #0227f8 0%, #eaeffa 50%, #05b4e994 100%) !important;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.login-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    overflow: hidden;
+    width: 100%;
+    max-width: 420px;
+}
+
+.login-header {
+    background: #1e3a8a;
+    color: white;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+}
+
+.login-header h3 { margin: 0; font-weight: 600; font-size: 1.9rem; }
+.login-header p { margin: 12px 0 0; opacity: 0.95; font-size: 1.6rem; }
+
+.login-body { padding: 4rem 2rem; }
+
+.login-body .form-label {
+    font-weight: 600;
+    color: #070707;
+    margin-bottom: 0.9rem;
+    font-size: 1.05rem;
+}
+
+.login-body .form-control {
+    height: 50px;
+    border-radius: 26px !important;
+    padding: 0 1.10rem;
+    font-size: 1.2rem;
+    border: 2.5px solid #e2e8f0;
+    transition: all 0.35s ease;
+    background-color: #fafafa;
+}
+
+.login-body .form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.3rem rgba(59, 130, 246, 0.25);
+    transform: translateY(-3px);
+    background-color: white;
+}
+
+.btn-login {
+    height: 56px;
+    border-radius: 16px !important;
+    font-size: 1.10rem;
+    font-weight: 600;
+    background: #1e3a8a;
+    border: none;
+    transition: all 0.35s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white !important;
+}
+
+.btn-login:hover {
+    background: #162e73;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(30, 58, 138, 0.4);
+}
+
+input::placeholder {
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    color: #999;
+}
+
+/* ====================== GENERAL ====================== */
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+}
+
+body.bg-light { background-color: #f8f9fa !important; }
+
+/* ====================== SIDEBAR ====================== */
+.sidebar {
+    background: linear-gradient(180deg, #0d47a1, #1976d2);
+    min-height: 100vh;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+}
+
+.sidebar .nav-link {
+    color: #e3f2fd;
+    padding: 14px 20px;
+    border-radius: 10px;
+    margin: 8px 15px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    transform: translateX(5px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.sidebar .nav-link i {
+    width: 24px;
+    text-align: center;
+    margin-right: 10px;
+}
+
+/* Tarjeta de usuario en sidebar */
+.user-card {
+    background: linear-gradient(135deg, #42a5f5, #1976d2);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(25, 118, 210, 0.3);
+    transition: transform 0.3s;
+}
+
+.user-card:hover { transform: translateY(-5px); }
+
+/* ====================== TARJETAS ====================== */
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.18) !important;
+}
+
+.card-icon {
+    font-size: 4.5rem;
+    opacity: 0.15;
+    position: absolute;
+    right: 20px;
+    bottom: 10px;
+}
+
+/* Colores por rol */
+.bg-admin { background: linear-gradient(135deg, #42a5f5, #1976d2) !important; }
+.bg-maestro { background: linear-gradient(135deg, #66bb6a, #43a047) !important; }
+.bg-estudiante { background: linear-gradient(135deg, #ffa726, #ff8f00) !important; }
+
+/* ====================== BOTONES ====================== */
+.btn-success {
+    background: #43a047;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 50px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.btn-success:hover {
+    background: #388e3c;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 20px rgba(67, 160, 71, 0.4);
+}
+
+.btn-primary {
+    background: #1976d2;
+    border: none;
+    border-radius: 50px;
+    padding: 10px 25px;
+}
+
+.btn-warning, .btn-danger {
+    border-radius: 50px;
+}
+
+/* ====================== TABLAS ====================== */
+.table {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.table thead {
+    background: #0d47a1;
+    color: white;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #e3f2fd !important;
+    transition: all 0.2s;
+}
+
+/* ====================== BADGES ====================== */
+.badge-admin { background-color: #dc3545 !important; }
+.badge-maestro { background-color: #0d6efd !important; }
+.badge-estudiante { background-color: #198754 !important; }
+
+.badge-insert { background-color: #198754 !important; }
+.badge-update { background-color: #ffc107 !important; color: #212529 !important; }
+.badge-delete { background-color: #dc3545 !important; }
+
+.badge-aprobado { background-color: #28a745 !important; }
+.badge-reprobado { background-color: #dc3545 !important; }
+
+/* ====================== NOTAS Y HORARIO ====================== */
+.nota-aprobado { background-color: #d4edda !important; color: #155724 !important; }
+.nota-reprobado { background-color: #f8d7da !important; color: #721c24 !important; }
+
+.horario-table th {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: 600;
+}
+
+.materia { font-weight: bold; color: #0d6efd; }
+.profesor { font-size: 0.85rem; color: #555; }
+.hora { background-color: #f8f9fa; font-weight: bold; }
+
+/* ====================== RELOJ Y FECHA ====================== */
+#reloj {
+    font-size: 2.8rem;
+    font-weight: bold;
+    color: #1976d2;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* ====================== RESPONSIVE ====================== */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        z-index: 1000;
+        width: 280px;
+        left: -280px;
+        transition: left 0.3s ease;
+    }
+    .sidebar.active { left: 0; }
+    .card-icon { font-size: 3rem; }
+}
+
+/* Footer del desarrollador */
+.text-muted small {
+    font-size: 0.9rem;
+}
+
+/* Efectos finales */
+.card-hover:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important;
+}

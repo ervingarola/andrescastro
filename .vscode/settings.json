@@ -1,0 +1,23 @@
+{
+    "sqltools.connections": [
+        {
+            "connectionTimeout": 15,
+            "mssqlOptions": {
+                "appName": "SQLTools",
+                "useUTC": true,
+                "encrypt": false,
+                "trustServerCertificate":  true
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "ERVING\\SQLEXPRESS",
+            "port": 1433,
+            "askForPassword": true,
+            "driver": "MSSQL",
+            "name": "Escuela",
+            "username": "Escuela_Andrescastro",
+            "group": "Local",
+            "database": "escuela_andres_castro"
+        }
+    ]
+}
