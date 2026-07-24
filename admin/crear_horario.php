@@ -2,7 +2,6 @@
 require '../inc/config.php'; 
 redirigirLogin(); 
 
-// Permitir acceso tanto a Admin como a Maestro
 if (!esAdmin() && !esMaestro()) {
     die("<h1 class='text-danger text-center mt-5'>Acceso denegado</h1>");
 }
@@ -19,19 +18,41 @@ if ($_POST && isset($_POST['guardar_horario'])) {
 
     if ($asignacion_id && $dia && $hora_inicio && $hora_fin) {
         try {
+            // === VALIDACIÓN DE CONFLICTO DE HORARIO ===
             $stmt = $conn->prepare("
-                INSERT INTO horario (asignacion_id, dia, hora_inicio, hora_fin, aula)
-                VALUES (?, ?, ?, ?, ?)
+                SELECT h.id, m.nombre AS materia_conflicto
+                FROM horario h
+                JOIN asignaciones a ON h.asignacion_id = a.id
+                JOIN materias m ON a.materia_id = m.id
+                WHERE a.maestro_id = (SELECT maestro_id FROM asignaciones WHERE id = ?)
+                    AND h.dia = ?
+                    AND (
+                        (h.hora_inicio <= ? AND h.hora_fin > ?)   -- Solapamiento por inicio
+                    OR (h.hora_inicio < ? AND h.hora_fin >= ?)    -- Solapamiento por fin
+                    OR (h.hora_inicio >= ? AND h.hora_inicio < ?) -- Dentro del nuevo horario
+                    )
             ");
-            $stmt->execute([$asignacion_id, $dia, $hora_inicio, $hora_fin, $aula]);
-            
-            $mensaje = "<div class='alert alert-success'>¡Horario creado correctamente!</div>";
-        } catch (PDOException $e) {
-            if ($e->getCode() == 23000) {
-                $mensaje = "<div class='alert alert-warning'>Este horario ya existe para esa asignación, día y hora.</div>";
+            $stmt->execute([$asignacion_id, $dia, $hora_inicio, $hora_inicio, $hora_fin, $hora_fin, $hora_inicio, $hora_fin]);
+
+            if ($stmt->rowCount() > 0) {
+                $conflicto = $stmt->fetch();
+                $mensaje = "<div class='alert alert-warning'>
+                    <strong>¡Conflicto de Horario!</strong><br>
+                    El profesor ya tiene clase de <strong>" . h($conflicto['materia_conflicto']) . "</strong> 
+                    el día <strong>{$dia}</strong> en ese horario.
+                </div>";
             } else {
-                $mensaje = "<div class='alert alert-danger'>Error: " . h($e->getMessage()) . "</div>";
+                // Insertar si no hay conflicto
+                $stmt = $conn->prepare("
+                    INSERT INTO horario (asignacion_id, dia, hora_inicio, hora_fin, aula)
+                    VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([$asignacion_id, $dia, $hora_inicio, $hora_fin, $aula]);
+                
+                $mensaje = "<div class='alert alert-success'>¡Horario creado correctamente!</div>";
             }
+        } catch (PDOException $e) {
+            $mensaje = "<div class='alert alert-danger'>Error: " . h($e->getMessage()) . "</div>";
         }
     } else {
         $mensaje = "<div class='alert alert-danger'>Faltan datos obligatorios.</div>";
@@ -60,10 +81,6 @@ if (isset($_GET['eliminar'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .horario-card { transition: all 0.3s; }
-        .horario-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important; }
-    </style>
 </head>
 <body class="bg-light">
 
@@ -75,7 +92,7 @@ if (isset($_GET['eliminar'])) {
 
     <?= $mensaje ?>
 
-    <!-- Formulario para agregar horario -->
+    <!-- Formulario -->
     <div class="card shadow mb-5">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Agregar Nuevo Horario</h5>
@@ -141,65 +158,57 @@ if (isset($_GET['eliminar'])) {
         </div>
     </div>
 
-    <!-- Lista de Horarios Registrados -->
+    <!-- Lista de Horarios -->
     <h4 class="mb-3">Horarios Registrados</h4>
     <div class="card shadow">
         <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Grado</th>
-                            <th>Materia</th>
-                            <th>Profesor</th>
-                            <th>Día</th>
-                            <th>Hora</th>
-                            <th>Aula</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        try {
-                            $stmt = $conn->query("
-                                SELECT h.id, a.grado, m.nombre AS materia, u.nombre_completo AS profesor,
-                                       h.dia, h.hora_inicio, h.hora_fin, h.aula
-                                FROM horario h
-                                JOIN asignaciones a ON h.asignacion_id = a.id
-                                JOIN materias m ON a.materia_id = m.id
-                                JOIN usuarios u ON a.maestro_id = u.id
-                                ORDER BY a.grado, h.dia, h.hora_inicio
-                            ");
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Grado</th>
+                        <th>Materia</th>
+                        <th>Profesor</th>
+                        <th>Día</th>
+                        <th>Hora</th>
+                        <th>Aula</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $stmt = $conn->query("
+                        SELECT h.id, a.grado, m.nombre AS materia, u.nombre_completo AS profesor,
+                                h.dia, h.hora_inicio, h.hora_fin, h.aula
+                        FROM horario h
+                        JOIN asignaciones a ON h.asignacion_id = a.id
+                        JOIN materias m ON a.materia_id = m.id
+                        JOIN usuarios u ON a.maestro_id = u.id
+                        ORDER BY a.grado, h.dia, h.hora_inicio
+                    ");
 
-                            if ($stmt->rowCount() == 0) {
-                                echo "<tr><td colspan='7' class='text-center text-muted py-4'>Aún no hay horarios registrados.</td></tr>";
-                            } else {
-                                while ($row = $stmt->fetch()) {
-                                    $hora = substr($row['hora_inicio'], 0, 5) . " - " . substr($row['hora_fin'], 0, 5);
-                                    echo "<tr>
-                                        <td><strong>{$row['grado']}°</strong></td>
-                                        <td>" . h($row['materia']) . "</td>
-                                        <td>" . h($row['profesor']) . "</td>
-                                        <td><span class='badge bg-primary'>{$row['dia']}</span></td>
-                                        <td><strong>{$hora}</strong></td>
-                                        <td>" . h($row['aula'] ?: '—') . "</td>
-                                        <td>
-                                            <a href='?eliminar={$row['id']}' 
-                                            class='btn btn-sm btn-danger'
-                                            onclick=\"return confirm('¿Eliminar este horario?')\">
-                                                <i class='bi bi-trash'></i> Eliminar
-                                            </a>
-                                        </td>
-                                    </tr>";
-                                }
-                            }
-                        } catch (Exception $e) {
-                            echo "<tr><td colspan='7' class='text-danger text-center py-4'>Error al cargar horarios.</td></tr>";
+                    if ($stmt->rowCount() == 0) {
+                        echo "<tr><td colspan='7' class='text-center text-muted py-4'>Aún no hay horarios registrados.</td></tr>";
+                    } else {
+                        while ($row = $stmt->fetch()) {
+                            $hora = substr($row['hora_inicio'], 0, 5) . " - " . substr($row['hora_fin'], 0, 5);
+                            echo "<tr>
+                                <td><strong>{$row['grado']}°</strong></td>
+                                <td>" . h($row['materia']) . "</td>
+                                <td>" . h($row['profesor']) . "</td>
+                                <td><span class='badge bg-primary'>{$row['dia']}</span></td>
+                                <td><strong>{$hora}</strong></td>
+                                <td>" . h($row['aula'] ?: '—') . "</td>
+                                <td>
+                                    <a href='?eliminar={$row['id']}' 
+                                        class='btn btn-sm btn-danger'
+                                        onclick=\"return confirm('¿Eliminar este horario?')\">Eliminar</a>
+                                </td>
+                            </tr>";
                         }
-                        ?>
-                    </tbody>
-                </table>
-            </div>
+                    }
+                    ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

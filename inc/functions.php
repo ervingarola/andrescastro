@@ -1,3 +1,4 @@
+
 <?php
 // inc/functions.php
 require_once 'config.php';
