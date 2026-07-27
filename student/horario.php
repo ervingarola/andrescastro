@@ -45,49 +45,47 @@ $grado = $_SESSION['grado'] ?? '';
                     <tbody>
                         <?php
                         try {
-                            // Obtener horario del estudiante a través de sus matrículas
+                            // Obtener todas las horas distintas de las asignaciones del estudiante
                             $stmt = $conn->prepare("
-                                SELECT DISTINCT h.hora_inicio, h.hora_fin 
-                                FROM horario h
-                                JOIN asignaciones a ON h.asignacion_id = a.id
+                                SELECT DISTINCT a.hora
+                                FROM asignaciones a
                                 JOIN matricula_estudiantes me ON me.asignacion_id = a.id
                                 WHERE me.estudiante_id = ?
-                                ORDER BY h.hora_inicio
+                                ORDER BY a.hora
                             ");
                             $stmt->execute([$estudiante_id]);
-                            $horas = $stmt->fetchAll();
+                            $horas = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
                             if (empty($horas)) {
                                 echo '<tr><td colspan="6" class="text-center py-5 text-muted fs-4">
                                         Aún no tienes horario asignado.<br>
-                                        <small>El administrador debe crear el horario y matricularte.</small>
+                                        <small>El administrador o profesor debe matricularte en las asignaciones.</small>
                                       </td></tr>';
                             } else {
                                 $dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-                                foreach ($horas as $h) {
-                                    $inicio = substr($h['hora_inicio'], 0, 5);
-                                    $fin = substr($h['hora_fin'], 0, 5);
-                                    echo "<tr><td class='hora fw-bold'>$inicio - $fin</td>";
+
+                                foreach ($horas as $hora) {
+                                    echo "<tr><td class='hora fw-bold'>" . h($hora) . "</td>";
 
                                     foreach ($dias as $dia) {
                                         $stmt2 = $conn->prepare("
-                                            SELECT m.nombre AS materia, u.nombre_completo AS profesor
-                                            FROM horario h
-                                            JOIN asignaciones a ON h.asignacion_id = a.id
+                                            SELECT m.nombre AS materia, u.nombre_completo AS profesor, a.aula
+                                            FROM asignaciones a
                                             JOIN materias m ON a.materia_id = m.id
                                             JOIN usuarios u ON a.maestro_id = u.id
                                             JOIN matricula_estudiantes me ON me.asignacion_id = a.id
                                             WHERE me.estudiante_id = ? 
-                                            AND h.dia = ? 
-                                            AND h.hora_inicio = ?
+                                                AND a.dia = ? 
+                                                AND a.hora = ?
                                         ");
-                                        $stmt2->execute([$estudiante_id, $dia, $h['hora_inicio']]);
+                                        $stmt2->execute([$estudiante_id, $dia, $hora]);
                                         $clase = $stmt2->fetch();
 
                                         if ($clase) {
                                             echo "<td>
-                                                <div class='materia'>" . h($clase['materia']) . "</div>
-                                                <div class='profesor'>Prof. " . h($clase['profesor']) . "</div>
+                                                <div class='materia fw-bold'>" . h($clase['materia']) . "</div>
+                                                <div class='profesor small text-muted'>Prof. " . h($clase['profesor']) . "</div>
+                                                <div class='aula small text-primary'>" . h($clase['aula'] ?: '') . "</div>
                                             </td>";
                                         } else {
                                             echo "<td class='text-muted'>—</td>";

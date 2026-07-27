@@ -68,6 +68,10 @@ function obtenerDia($dia) {
                         <a href="admin/crear_horario.php" class="nav-link">
                             <i class="bi bi-clock-history"></i> Crear Horario
                         </a>
+
+                        <a href="admin/matricular_estudiantes.php" class="nav-link">
+                            <i class="bi bi-person-plus"></i> Matricular Estudiantes
+                        </a>
                     
                     <?php endif; ?>
 

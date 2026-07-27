@@ -47,7 +47,7 @@ $maestro_id = $_SESSION['user_id'];
             echo "<div class='alert alert-warning text-center p-5'>
                     <h4>Aún no tienes materias asignadas</h4>
                     <p>El Administrador debe asignarte materias primero.</p>
-                  </div>";
+                    </div>";
         } else {
             foreach ($asignaciones as $asig) {
                 $asignacion_id = $asig['asignacion_id'];
@@ -68,7 +68,7 @@ $maestro_id = $_SESSION['user_id'];
                         <?php else: ?>
                             <p class="text-success fw-bold">Hay <?= $totalEstudiantes ?> estudiantes matriculados.</p>
                             <a href="ingresar_notas_detalle.php?asignacion=<?= $asignacion_id ?>" 
-                               class="btn btn-success btn-lg">
+                                class="btn btn-success btn-lg">
                                 <i class="bi bi-pencil-square"></i> Ingresar Notas
                             </a>
                         <?php endif; ?>
@@ -81,7 +81,7 @@ $maestro_id = $_SESSION['user_id'];
         echo "<div class='alert alert-danger'>
                 <strong>Error en ingresar_notas.php:</strong><br>
                 " . h($e->getMessage()) . "
-              </div>";
+                </div>";
     }
     ?>
 </div>

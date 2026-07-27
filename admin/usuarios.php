@@ -31,19 +31,20 @@ if (isset($_POST['crear'])) {
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $rol = $_POST['rol'];
     $grado = ($rol === 'estudiante' && !empty($_POST['grado'])) ? $_POST['grado'] : null;
+    $aula = ($rol === 'estudiante' && !empty($_POST['aula'])) ? $_POST['aula'] : null;
 
     if (empty($nombre) || empty($usuario) || empty($_POST['password'])) {
         $mensaje = "<div class='alert alert-danger'>Faltan datos obligatorios.</div>";
     } else {
         try {
-            $stmt = $conn->prepare("INSERT INTO usuarios (nombre_completo, usuario, password, rol, grado) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$nombre, $usuario, $password, $rol, $grado]);
+            $stmt = $conn->prepare("INSERT INTO usuarios (nombre_completo, usuario, password, rol, grado, aula) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$nombre, $usuario, $password, $rol, $grado, $aula]);
             $mensaje = "<div class='alert alert-success'>Usuario creado correctamente.</div>";
         } catch (PDOException $e) {
             if ($e->getCode() == 23000) {
                 $mensaje = "<div class='alert alert-danger'>El usuario <strong>$usuario</strong> ya existe.</div>";
             } else {
-                $mensaje = "<div class='alert alert-danger'>Error al crear usuario.</div>";
+                $mensaje = "<div class='alert alert-danger'>Error al crear usuario: " . h($e->getMessage()) . "</div>";
             }
         }
     }
@@ -52,7 +53,7 @@ if (isset($_POST['crear'])) {
 // ========== ELIMINAR USUARIO ==========
 if (isset($_GET['eliminar'])) {
     $id = (int)$_GET['eliminar'];
-    if ($id != 1) { // no borrar el admin principal si su id es 1
+    if ($id != 1) {
         $conn->prepare("DELETE FROM usuarios WHERE id = ? AND id != 1")->execute([$id]);
         $mensaje = "<div class='alert alert-success'>Usuario eliminado.</div>";
     }
@@ -95,19 +96,32 @@ if (isset($_GET['eliminar'])) {
                     <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
                 </div>
                 <div class="col-md-3">
-                    <select name="rol" class="form-select" onchange="toggleGrado(this)" required>
+                    <select name="rol" id="rolSelect" class="form-select" onchange="toggleCampos()" required>
                         <option value="">-- Seleccionar rol --</option>
                         <option value="admin">Administrador</option>
                         <option value="maestro">Maestro</option>
                         <option value="estudiante">Estudiante</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <select name="grado" id="gradoSelect" class="form-select" disabled>
+
+                <!-- Campos solo para Estudiante -->
+                <div class="col-md-2" id="gradoContainer" style="display:none;">
+                    <select name="grado" id="gradoSelect" class="form-select" onchange="actualizarAulas()">
                         <option value="">Grado</option>
-                        <option>7</option><option>8</option><option>9</option><option>10</option><option>11</option>
+                        <option value="7">7°</option>
+                        <option value="8">8°</option>
+                        <option value="9">9°</option>
+                        <option value="10">10°</option>
+                        <option value="11">11°</option>
                     </select>
                 </div>
+
+                <div class="col-md-2" id="aulaContainer" style="display:none;">
+                    <select name="aula" id="aulaSelect" class="form-select">
+                        <option value="">Aula / Sección</option>
+                    </select>
+                </div>
+
                 <div class="col-md-2">
                     <button type="submit" name="crear" class="btn btn-success w-100">Crear</button>
                 </div>
@@ -126,12 +140,13 @@ if (isset($_GET['eliminar'])) {
                     <th>Usuario</th>
                     <th>Rol</th>
                     <th>Grado</th>
+                    <th>Aula</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                $stmt = $conn->query("SELECT id, nombre_completo, usuario, rol, grado FROM usuarios ORDER BY rol DESC, nombre_completo");
+                $stmt = $conn->query("SELECT id, nombre_completo, usuario, rol, grado, aula FROM usuarios ORDER BY rol DESC, nombre_completo");
                 while ($u = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     $badge = $u['rol'] === 'admin' ? 'danger' : ($u['rol'] === 'maestro' ? 'primary' : 'success');
                     echo "<tr>
@@ -140,6 +155,7 @@ if (isset($_GET['eliminar'])) {
                         <td>{$u['usuario']}</td>
                         <td><span class='badge bg-$badge'>" . ucfirst($u['rol']) . "</span></td>
                         <td>" . ($u['grado'] ? $u['grado'] . "°" : "—") . "</td>
+                        <td>" . ($u['aula'] ? h($u['aula']) : "—") . "</td>
                         <td class='text-center'>
                             <button class='btn btn-sm btn-warning' data-bs-toggle='modal' data-bs-target='#modal{$u['id']}'>
                                 Cambiar Contraseña
@@ -148,7 +164,7 @@ if (isset($_GET['eliminar'])) {
                         </td>
                     </tr>";
 
-                    // Modal para cambiar contraseña
+                    // Modal
                     echo "
                     <div class='modal fade' id='modal{$u['id']}' tabindex='-1'>
                         <div class='modal-dialog'>
@@ -180,9 +196,44 @@ if (isset($_GET['eliminar'])) {
 </div>
 
 <script>
-function toggleGrado(select) {
-    document.getElementById('gradoSelect').disabled = select.value !== 'estudiante';
-    if (select.value !== 'estudiante') document.getElementById('gradoSelect').value = '';
+function toggleCampos() {
+    const rol = document.getElementById('rolSelect').value;
+    const gradoContainer = document.getElementById('gradoContainer');
+    const aulaContainer = document.getElementById('aulaContainer');
+
+    if (rol === 'estudiante') {
+        gradoContainer.style.display = 'block';
+        aulaContainer.style.display = 'block';
+    } else {
+        gradoContainer.style.display = 'none';
+        aulaContainer.style.display = 'none';
+        document.getElementById('gradoSelect').value = '';
+        document.getElementById('aulaSelect').innerHTML = '<option value="">Aula / Sección</option>';
+    }
+}
+
+function actualizarAulas() {
+    const grado = document.getElementById('gradoSelect').value;
+    const aulaSelect = document.getElementById('aulaSelect');
+
+    const aulas = {
+        '7': ['A-1', 'A-2', 'A-3'],
+        '8': ['B-1', 'B-2', 'B-3'],
+        '9': ['C-1', 'C-2', 'C-3'],
+        '10': ['D-1', 'D-2', 'D-3'],
+        '11': ['E-1', 'E-2', 'E-3']
+    };
+
+    aulaSelect.innerHTML = '<option value="">Aula / Sección</option>';
+
+    if (aulas[grado]) {
+        aulas[grado].forEach(aula => {
+            const option = document.createElement('option');
+            option.value = aula;
+            option.textContent = aula;
+            aulaSelect.appendChild(option);
+        });
+    }
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

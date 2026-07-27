@@ -22,7 +22,7 @@ if ($_POST && isset($_POST['guardar'])) {
 
     $hora_completa = $hora_inicio . " - " . $hora_fin;
 
-    if (empty($grado) || empty($dia) || empty($hora_inicio) || empty($hora_fin)) {
+    if (empty($grado) || empty($dia) || empty($hora_inicio) || empty($hora_fin) || empty($aula)) {
         $mensaje = "<div class='alert alert-danger'>Todos los campos obligatorios deben completarse.</div>";
     } else {
         try {
@@ -126,10 +126,18 @@ if ($_POST && isset($_POST['guardar'])) {
 
                 <div class="col-md-2">
                     <label class="form-label">Grado</label>
-                    <select name="grado" class="form-select" required>
+                    <select name="grado" id="gradoSelect" class="form-select" onchange="actualizarAulas()" required>
+                        <option value="">Seleccionar</option>
                         <?php for($i=7; $i<=11; $i++): ?>
                             <option value="<?= $i ?>"><?= $i ?>°</option>
                         <?php endfor; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Aula / Sección</label>
+                    <select name="aula" id="aulaSelect" class="form-select" required>
+                        <option value="">Seleccionar Aula</option>
                     </select>
                 </div>
 
@@ -154,11 +162,6 @@ if ($_POST && isset($_POST['guardar'])) {
                     <input type="time" name="hora_fin" class="form-control" required>
                 </div>
 
-                <div class="col-md-2">
-                    <label class="form-label">Aula</label>
-                    <input type="text" name="aula" class="form-control" placeholder="A-101">
-                </div>
-
                 <div class="col-12">
                     <button type="submit" class="btn btn-success btn-lg">Guardar Asignación</button>
                 </div>
@@ -176,7 +179,7 @@ if ($_POST && isset($_POST['guardar'])) {
         JOIN materias m ON a.materia_id = m.id
         JOIN usuarios u ON a.maestro_id = u.id
         $where
-        ORDER BY CAST(a.grado AS INT) ASC, a.dia, a.hora
+        ORDER BY CAST(a.grado AS INT) ASC, a.aula, a.dia, a.hora
     ");
     $asignaciones = $stmt->fetchAll();
 
@@ -196,9 +199,9 @@ if ($_POST && isset($_POST['guardar'])) {
                             <tr>
                                 <th>Materia</th>
                                 <th>Profesor</th>
+                                <th>Aula</th>
                                 <th>Día</th>
                                 <th>Hora</th>
-                                <th>Aula</th>
                                 <th>Acción</th>
                             </tr>
                         </thead>
@@ -207,9 +210,9 @@ if ($_POST && isset($_POST['guardar'])) {
                             <tr>
                                 <td><?= h($row['materia']) ?></td>
                                 <td><?= h($row['profesor']) ?></td>
+                                <td><strong><?= h($row['aula'] ?: '—') ?></strong></td>
                                 <td><?= h($row['dia']) ?></td>
                                 <td><?= h($row['hora']) ?></td>
-                                <td><?= h($row['aula'] ?: '—') ?></td>
                                 <td>
                                     <form method="post" onsubmit="return confirm('¿Eliminar?')">
                                         <input type="hidden" name="accion" value="eliminar">
@@ -228,6 +231,31 @@ if ($_POST && isset($_POST['guardar'])) {
     ?>
 </div>
 
+<script>
+function actualizarAulas() {
+    const grado = document.getElementById('gradoSelect').value;
+    const aulaSelect = document.getElementById('aulaSelect');
+
+    const aulas = {
+        '7': ['A-1', 'A-2', 'A-3'],
+        '8': ['B-1', 'B-2', 'B-3'],
+        '9': ['C-1', 'C-2', 'C-3'],
+        '10': ['D-1', 'D-2', 'D-3'],
+        '11': ['E-1', 'E-2', 'E-3']
+    };
+
+    aulaSelect.innerHTML = '<option value="">Seleccionar Aula</option>';
+
+    if (aulas[grado]) {
+        aulas[grado].forEach(aula => {
+            const option = document.createElement('option');
+            option.value = aula;
+            option.textContent = aula;
+            aulaSelect.appendChild(option);
+        });
+    }
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
