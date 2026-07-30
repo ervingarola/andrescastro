@@ -65,9 +65,7 @@ function obtenerDia($dia) {
                         <a href="teacher/ingresar_notas.php" class="nav-link">
                             <i class="bi bi-clipboard-check"></i> Ingresar Notas
                         </a>
-                        <a href="admin/crear_horario.php" class="nav-link">
-                            <i class="bi bi-clock-history"></i> Crear Horario
-                        </a>
+                        
 
                         <a href="admin/matricular_estudiantes.php" class="nav-link">
                             <i class="bi bi-person-plus"></i> Matricular Estudiantes
@@ -80,9 +78,7 @@ function obtenerDia($dia) {
                         <a href="admin/usuarios.php" class="nav-link">
                             <i class="bi bi-people"></i> Gestión de Usuarios
                         </a>
-                        <a href="admin/matricular_estudiantes.php" class="nav-link">
-                            <i class="bi bi-person-plus"></i> Matricular Estudiantes
-                        </a>
+                        
                         <a href="admin/auditoria.php" class="nav-link">
                             <i class="bi bi-shield-lock"></i> Auditoría del Sistema
                         </a>

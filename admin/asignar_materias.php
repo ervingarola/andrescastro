@@ -9,6 +9,47 @@ if (!esAdmin() && !esMaestro()) {
 $isAdmin = esAdmin();
 $mensaje = "";
 
+// ==================== ELIMINAR ASIGNACIÓN ====================
+if ($_POST && isset($_POST['accion']) && $_POST['accion'] === 'eliminar') {
+    $asignacion_id = (int)($_POST['asignacion_id'] ?? 0);
+
+    if ($asignacion_id > 0) {
+        try {
+            // Verificar que exista y que el usuario tenga permiso
+            $stmt = $conn->prepare("SELECT maestro_id FROM asignaciones WHERE id = ?");
+            $stmt->execute([$asignacion_id]);
+            $asig = $stmt->fetch();
+
+            if (!$asig) {
+                $mensaje = "<div class='alert alert-danger'>La asignación no existe.</div>";
+            } elseif (!$isAdmin && $asig['maestro_id'] != $_SESSION['user_id']) {
+                $mensaje = "<div class='alert alert-danger'>No tienes permiso para eliminar esta asignación.</div>";
+            } else {
+                // 1. Borrar las notas relacionadas a las matrículas de esta asignación
+                $conn->prepare("
+                    DELETE FROM notas 
+                    WHERE matricula_id IN (
+                        SELECT id FROM matricula_estudiantes WHERE asignacion_id = ?
+                    )
+                ")->execute([$asignacion_id]);
+
+                // 2. Borrar registros de horario (si existen)
+                $conn->prepare("DELETE FROM horario WHERE asignacion_id = ?")->execute([$asignacion_id]);
+
+                // 3. Borrar matrículas relacionadas
+                $conn->prepare("DELETE FROM matricula_estudiantes WHERE asignacion_id = ?")->execute([$asignacion_id]);
+                
+                // 4. Borrar la asignación
+                $conn->prepare("DELETE FROM asignaciones WHERE id = ?")->execute([$asignacion_id]);
+                
+                $mensaje = "<div class='alert alert-success'>¡Asignación eliminada correctamente!</div>";
+            }
+        } catch (Exception $e) {
+            $mensaje = "<div class='alert alert-danger'>Error al eliminar: " . h($e->getMessage()) . "</div>";
+        }
+    }
+}
+
 // ==================== GUARDAR ASIGNACIÓN ====================
 if ($_POST && isset($_POST['guardar'])) {
     $maestro_id    = $isAdmin ? (int)$_POST['maestro_id'] : $_SESSION['user_id'];
@@ -190,6 +231,8 @@ if ($_POST && isset($_POST['guardar'])) {
         foreach ($asignaciones as $row) {
             $porGrado[$row['grado']][] = $row;
         }
+        ksort($porGrado, SORT_NUMERIC);
+
         foreach ($porGrado as $grado => $clases): ?>
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white fw-bold"><?= $grado ?>° Grado</div>
@@ -214,10 +257,12 @@ if ($_POST && isset($_POST['guardar'])) {
                                 <td><?= h($row['dia']) ?></td>
                                 <td><?= h($row['hora']) ?></td>
                                 <td>
-                                    <form method="post" onsubmit="return confirm('¿Eliminar?')">
+                                    <form method="post" onsubmit="return confirm('¿Estás seguro de eliminar esta asignación?')">
                                         <input type="hidden" name="accion" value="eliminar">
                                         <input type="hidden" name="asignacion_id" value="<?= $row['id'] ?>">
-                                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
                                     </form>
                                 </td>
                             </tr>

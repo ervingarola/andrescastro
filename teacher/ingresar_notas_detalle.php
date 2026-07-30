@@ -15,7 +15,7 @@ if ($asignacion_id === 0) {
 
 // Información de la asignación
 $stmt = $conn->prepare("
-    SELECT m.nombre AS materia, a.grado, u.nombre_completo AS profesor
+    SELECT m.nombre AS materia, a.grado, a.aula, u.nombre_completo AS profesor, a.maestro_id
     FROM asignaciones a 
     JOIN materias m ON a.materia_id = m.id 
     JOIN usuarios u ON a.maestro_id = u.id 
@@ -23,6 +23,15 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$asignacion_id]);
 $asignacion = $stmt->fetch();
+
+if (!$asignacion) {
+    die("<h1 class='text-danger text-center mt-5'>Asignación no encontrada</h1>");
+}
+
+// Solo el admin o el profesor dueño pueden entrar
+if (!esAdmin() && $asignacion['maestro_id'] != $_SESSION['user_id']) {
+    die("<h1 class='text-danger text-center mt-5'>No tienes permiso para esta asignación</h1>");
+}
 
 // ==================== PROCESAR GUARDADO ====================
 if ($_POST && isset($_POST['guardar_notas'])) {
@@ -48,7 +57,10 @@ if ($_POST && isset($_POST['guardar_notas'])) {
         }
         
         $conn->commit();
-        $mensaje = "<div class='alert alert-success'>¡Notas guardadas correctamente!</div>";
+        $mensaje = "<div class='alert alert-success alert-dismissible fade show'>
+                        <i class='bi bi-check-circle-fill'></i> ¡Notas guardadas correctamente!
+                        <button type='button' class='btn-close' data-bs-dismiss='alert'></button>
+                    </div>";
     } catch (Exception $e) {
         $conn->rollBack();
         $mensaje = "<div class='alert alert-danger'>Error al guardar notas: " . h($e->getMessage()) . "</div>";
@@ -66,28 +78,45 @@ if ($_POST && isset($_POST['guardar_notas'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body class="bg-light">
+<body class="bg-notas">
 
-<div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><?= h($asignacion['materia']) ?> — <?= $asignacion['grado'] ?>° Grado</h2>
-        <a href="../dashboard.php" class="btn btn-outline-secondary">Volver al Dashboard</a>
+<div class="container mt-5 pt-4">
+    <!-- Encabezado -->
+    <div class="notas-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-1"><?= h($asignacion['materia']) ?></h2>
+                <p class="mb-0 opacity-90">
+                    <?= $asignacion['grado'] ?>° Grado 
+                    <?php if ($asignacion['aula']): ?>
+                        • Aula <?= h($asignacion['aula']) ?>
+                    <?php endif; ?>
+                </p>
+            </div>
+            <a href="ingresar_notas.php" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
     </div>
 
-    <p><strong>Profesor:</strong> <?= h($asignacion['profesor']) ?></p>
+    <div class="info-profesor">
+        <i class="bi bi-person-badge"></i> 
+        <strong>Profesor:</strong> <?= h($asignacion['profesor']) ?>
+    </div>
+
     <?= $mensaje ?>
 
     <form method="post">
         <input type="hidden" name="guardar_notas" value="1">
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover">
-                <thead class="table-dark">
+        <div class="table-responsive tabla-notas-detalle">
+            <table class="table table-bordered table-hover mb-0">
+                <thead>
                     <tr>
-                        <th>Estudiante</th>
-                        <th class="text-center">Período 1</th>
-                        <th class="text-center">Período 2</th>
-                        <th class="text-center">Período 3</th>
+                        <th class="text-start ps-3">Estudiante</th>
+                        <th>Período 1</th>
+                        <th>Período 2</th>
+                        <th>Período 3</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,25 +129,54 @@ if ($_POST && isset($_POST['guardar_notas'])) {
                         ORDER BY u.nombre_completo
                     ");
                     $stmt->execute([$asignacion_id]);
+                    $hayEstudiantes = false;
                     while ($est = $stmt->fetch()):
+                        $hayEstudiantes = true;
                         $nStmt = $conn->prepare("SELECT periodo1, periodo2, periodo3 FROM notas WHERE matricula_id = ?");
                         $nStmt->execute([$est['matricula_id']]);
                         $nota = $nStmt->fetch();
                     ?>
                     <tr>
-                        <td class="fw-bold"><?= h($est['nombre_completo']) ?></td>
-                        <td><input type="number" step="0.01" min="0" max="100" name="notas[<?= $est['matricula_id'] ?>][p1]" value="<?= $nota['periodo1'] ?? '' ?>" class="form-control text-center"></td>
-                        <td><input type="number" step="0.01" min="0" max="100" name="notas[<?= $est['matricula_id'] ?>][p2]" value="<?= $nota['periodo2'] ?? '' ?>" class="form-control text-center"></td>
-                        <td><input type="number" step="0.01" min="0" max="100" name="notas[<?= $est['matricula_id'] ?>][p3]" value="<?= $nota['periodo3'] ?? '' ?>" class="form-control text-center"></td>
+                        <td class="fw-semibold ps-3"><?= h($est['nombre_completo']) ?></td>
+                        <td class="text-center">
+                            <input type="number" step="0.01" min="0" max="100" 
+                                    name="notas[<?= $est['matricula_id'] ?>][p1]" 
+                                    value="<?= $nota['periodo1'] ?? '' ?>" 
+                                    class="form-control input-nota">
+                        </td>
+                        <td class="text-center">
+                            <input type="number" step="0.01" min="0" max="100" 
+                                    name="notas[<?= $est['matricula_id'] ?>][p2]" 
+                                    value="<?= $nota['periodo2'] ?? '' ?>" 
+                                    class="form-control input-nota">
+                        </td>
+                        <td class="text-center">
+                            <input type="number" step="0.01" min="0" max="100" 
+                                    name="notas[<?= $est['matricula_id'] ?>][p3]" 
+                                    value="<?= $nota['periodo3'] ?? '' ?>" 
+                                    class="form-control input-nota">
+                        </td>
                     </tr>
                     <?php endwhile; ?>
+
+                    <?php if (!$hayEstudiantes): ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                No hay estudiantes matriculados en esta asignación.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        <button type="submit" class="btn btn-success btn-lg mt-3">
-            <i class="bi bi-save"></i> Guardar Todas las Notas
-        </button>
+        <?php if ($hayEstudiantes): ?>
+            <div class="text-center mt-4 mb-5">
+                <button type="submit" class="btn btn-success btn-guardar-notas">
+                    <i class="bi bi-save"></i> Guardar Todas las Notas
+                </button>
+            </div>
+        <?php endif; ?>
     </form>
 </div>
 
