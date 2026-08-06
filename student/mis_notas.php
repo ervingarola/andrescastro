@@ -16,17 +16,22 @@ $estudiante_id = $_SESSION['user_id'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body class="bg-light">
+<body class="bg-notas">
 
 <div class="container mt-5 pt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-primary fw-bold">Mis Notas Académicas</h2>
-        <a href="../dashboard.php" class="btn btn-outline-secondary">Volver al Dashboard</a>
+        <div>
+            <h2 class="text-primary fw-bold mb-1">Mis Notas Académicas</h2>
+            <p class="text-muted mb-0">Reporte de calificaciones • Año 2025</p>
+        </div>
+        <a href="../dashboard.php" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Dashboard
+        </a>
     </div>
 
     <div class="card shadow-lg border-0">
         <div class="card-header bg-primary text-white text-center">
-            <h4 class="mb-0">Reporte de Calificaciones - Año 2025</h4>
+            <h4 class="mb-0">Boletín de Calificaciones</h4>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -34,9 +39,11 @@ $estudiante_id = $_SESSION['user_id'];
                     <thead class="table-dark">
                         <tr>
                             <th>Materia</th>
-                            <th class="text-center">Período 1</th>
-                            <th class="text-center">Período 2</th>
-                            <th class="text-center">Período 3</th>
+                            <th class="text-center">1° Corte</th>
+                            <th class="text-center">2° Corte</th>
+                            <th class="text-center">3° Corte</th>
+                            <th class="text-center">4° Corte</th>
+                            <th class="text-center">Promedio</th>
                             <th class="text-center">Estado</th>
                         </tr>
                     </thead>
@@ -46,9 +53,11 @@ $estudiante_id = $_SESSION['user_id'];
                             $stmt = $conn->prepare("
                                 SELECT 
                                     m.nombre AS materia,
-                                    COALESCE(n.periodo1, 0) AS periodo1,
-                                    COALESCE(n.periodo2, 0) AS periodo2,
-                                    COALESCE(n.periodo3, 0) AS periodo3
+                                    n.periodo1,
+                                    n.periodo2,
+                                    n.periodo3,
+                                    n.periodo4,
+                                    n.promedio_final
                                 FROM matricula_estudiantes me
                                 JOIN asignaciones a ON me.asignacion_id = a.id
                                 JOIN materias m ON a.materia_id = m.id
@@ -60,42 +69,67 @@ $estudiante_id = $_SESSION['user_id'];
                             $notas = $stmt->fetchAll();
 
                             if (empty($notas)) {
-                                echo '<tr><td colspan="5" class="text-center py-5 text-muted">Aún no tienes notas registradas.</td></tr>';
+                                echo '<tr><td colspan="7" class="text-center py-5 text-muted">
+                                        Aún no tienes notas registradas.
+                                      </td></tr>';
                             } else {
                                 foreach ($notas as $row) {
-                                    $p1 = (float)$row['periodo1'];
-                                    $p2 = (float)$row['periodo2'];
-                                    $p3 = (float)$row['periodo3'];
+                                    $p1 = $row['periodo1'];
+                                    $p2 = $row['periodo2'];
+                                    $p3 = $row['periodo3'];
+                                    $p4 = $row['periodo4'];
+                                    $promedio = $row['promedio_final'];
 
-                                    // Determinar estado
-                                    if ($p1 < 60 || $p2 < 60 || $p3 < 60) {
-                                        $estado = "Reparación";
-                                        $badge = "bg-warning text-dark";
-                                    } elseif ($p1 == 0 && $p2 == 0 && $p3 == 0) {
+                                    // Si no hay promedio guardado, calcularlo
+                                    if ($promedio === null) {
+                                        $validas = array_filter([$p1, $p2, $p3, $p4], function($n) {
+                                            return $n !== null;
+                                        });
+                                        if (count($validas) > 0) {
+                                            $promedio = round(array_sum($validas) / count($validas), 2);
+                                        }
+                                    }
+
+                                    // Estado
+                                    if ($promedio === null) {
                                         $estado = "Sin notas";
                                         $badge = "bg-secondary";
-                                    } else {
+                                    } elseif ($promedio >= 60) {
                                         $estado = "Aprobado";
                                         $badge = "bg-success";
+                                    } else {
+                                        $estado = "Reprobado";
+                                        $badge = "bg-danger";
                                     }
                                     ?>
                                     <tr>
                                         <td class="fw-bold"><?= h($row['materia']) ?></td>
-                                        <td class="text-center"><?= $p1 > 0 ? $p1 : '-' ?></td>
-                                        <td class="text-center"><?= $p2 > 0 ? $p2 : '-' ?></td>
-                                        <td class="text-center"><?= $p3 > 0 ? $p3 : '-' ?></td>
-                                        <td class="text-center"><span class="badge <?= $badge ?> fs-6"><?= $estado ?></span></td>
+                                        <td class="text-center"><?= $p1 !== null ? number_format($p1, 2) : '—' ?></td>
+                                        <td class="text-center"><?= $p2 !== null ? number_format($p2, 2) : '—' ?></td>
+                                        <td class="text-center"><?= $p3 !== null ? number_format($p3, 2) : '—' ?></td>
+                                        <td class="text-center"><?= $p4 !== null ? number_format($p4, 2) : '—' ?></td>
+                                        <td class="text-center fw-bold">
+                                            <?= $promedio !== null ? number_format($promedio, 2) : '—' ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge <?= $badge ?> fs-6"><?= $estado ?></span>
+                                        </td>
                                     </tr>
                                     <?php
                                 }
                             }
                         } catch (Exception $e) {
-                            echo '<tr><td colspan="5" class="text-danger text-center py-4">Error: ' . h($e->getMessage()) . '</td></tr>';
+                            echo '<tr><td colspan="7" class="text-danger text-center py-4">Error: ' . h($e->getMessage()) . '</td></tr>';
                         }
                         ?>
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="card-footer text-center bg-white">
+            <small class="text-muted">
+                Escala de evaluación: <strong>60 o más = Aprobado</strong> • Menos de 60 = Reprobado
+            </small>
         </div>
     </div>
 </div>

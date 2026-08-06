@@ -402,3 +402,108 @@ body.bg-notas {
     border-radius: 8px;
     margin-bottom: 20px;
 }
+
+
+/* ====================== CAMBIAR CONTRASEÑA ====================== */
+.card-password {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(19, 2, 253, 0.08);
+}
+
+.card-password .card-header {
+    background: linear-gradient(135deg, #1976d2, #1976d2);
+    color: rgb(1, 24, 1);
+    padding: 16px 22px;
+}
+
+.form-password .form-control {
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    padding: 12px 15px;
+    transition: all 0.25s ease;
+}
+
+.form-password .form-control:focus {
+    border-color: #6406fc;
+    box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.25);
+}
+
+.btn-guardar-password {
+    border-radius: 50px;
+    padding: 12px 30px;
+    font-weight: 600;
+    box-shadow: 0 6px 20px rgba(238, 240, 238, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-guardar-password:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(230, 69, 6, 0.4);
+}
+
+/* ====================== MENÚ RESPONSIVE ====================== */
+.sidebar {
+    transition: all 0.3s ease;
+}
+
+/* Botón hamburguesa (solo visible en móvil) */
+.btn-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1050;
+    background: #0d47a1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 1.4rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Overlay oscuro cuando el menú está abierto en móvil */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1030;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* En pantallas pequeñas */
+@media (max-width: 991.98px) {
+    .btn-menu-toggle {
+        display: block;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        z-index: 1040;
+        overflow-y: auto;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    /* El contenido principal ocupa todo el ancho en móvil */
+    .col-lg-9.col-xl-10 {
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding-top: 60px; /* espacio para el botón */
+    }
+}

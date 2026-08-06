@@ -39,21 +39,37 @@ if ($_POST && isset($_POST['guardar_notas'])) {
         $conn->beginTransaction();
         
         foreach ($_POST['notas'] as $matricula_id => $valores) {
-            $p1 = !empty($valores['p1']) ? (float)$valores['p1'] : null;
-            $p2 = !empty($valores['p2']) ? (float)$valores['p2'] : null;
-            $p3 = !empty($valores['p3']) ? (float)$valores['p3'] : null;
+            $p1 = (isset($valores['p1']) && $valores['p1'] !== '') ? (float)$valores['p1'] : null;
+            $p2 = (isset($valores['p2']) && $valores['p2'] !== '') ? (float)$valores['p2'] : null;
+            $p3 = (isset($valores['p3']) && $valores['p3'] !== '') ? (float)$valores['p3'] : null;
+            $p4 = (isset($valores['p4']) && $valores['p4'] !== '') ? (float)$valores['p4'] : null;
+
+            // Calcular promedio solo con los períodos que tengan nota
+            $notasValidas = array_filter([$p1, $p2, $p3, $p4], function($n) {
+                return $n !== null;
+            });
+
+            $promedio = null;
+            if (count($notasValidas) > 0) {
+                $promedio = round(array_sum($notasValidas) / count($notasValidas), 2);
+            }
 
             $stmt = $conn->prepare("
                 MERGE INTO notas AS target
-                USING (VALUES (?, ?, ?, ?)) AS source (matricula_id, p1, p2, p3)
+                USING (VALUES (?, ?, ?, ?, ?, ?)) AS source (matricula_id, p1, p2, p3, p4, promedio)
                 ON target.matricula_id = source.matricula_id
                 WHEN MATCHED THEN 
-                    UPDATE SET periodo1 = source.p1, periodo2 = source.p2, periodo3 = source.p3
+                    UPDATE SET 
+                        periodo1 = source.p1, 
+                        periodo2 = source.p2, 
+                        periodo3 = source.p3,
+                        periodo4 = source.p4,
+                        promedio_final = source.promedio
                 WHEN NOT MATCHED THEN 
-                    INSERT (matricula_id, periodo1, periodo2, periodo3)
-                    VALUES (source.matricula_id, source.p1, source.p2, source.p3);
+                    INSERT (matricula_id, periodo1, periodo2, periodo3, periodo4, promedio_final)
+                    VALUES (source.matricula_id, source.p1, source.p2, source.p3, source.p4, source.promedio);
             ");
-            $stmt->execute([$matricula_id, $p1, $p2, $p3]);
+            $stmt->execute([$matricula_id, $p1, $p2, $p3, $p4, $promedio]);
         }
         
         $conn->commit();
@@ -87,7 +103,7 @@ if ($_POST && isset($_POST['guardar_notas'])) {
             <div>
                 <h2 class="mb-1"><?= h($asignacion['materia']) ?></h2>
                 <p class="mb-0 opacity-90">
-                    <?= $asignacion['grado'] ?>° Grado 
+                    <?= $asignacion['grado'] ?>° Grado
                     <?php if ($asignacion['aula']): ?>
                         • Aula <?= h($asignacion['aula']) ?>
                     <?php endif; ?>
@@ -100,7 +116,7 @@ if ($_POST && isset($_POST['guardar_notas'])) {
     </div>
 
     <div class="info-profesor">
-        <i class="bi bi-person-badge"></i> 
+        <i class="bi bi-person-badge"></i>
         <strong>Profesor:</strong> <?= h($asignacion['profesor']) ?>
     </div>
 
@@ -114,9 +130,12 @@ if ($_POST && isset($_POST['guardar_notas'])) {
                 <thead>
                     <tr>
                         <th class="text-start ps-3">Estudiante</th>
-                        <th>Período 1</th>
-                        <th>Período 2</th>
-                        <th>Período 3</th>
+                        <th>1° Corte</th>
+                        <th>2° Corte</th>
+                        <th>3° Corte</th>
+                        <th>4° Corte</th>
+                        <th>Promedio</th>
+                        <th>Estado</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,38 +149,72 @@ if ($_POST && isset($_POST['guardar_notas'])) {
                     ");
                     $stmt->execute([$asignacion_id]);
                     $hayEstudiantes = false;
+
                     while ($est = $stmt->fetch()):
                         $hayEstudiantes = true;
-                        $nStmt = $conn->prepare("SELECT periodo1, periodo2, periodo3 FROM notas WHERE matricula_id = ?");
+                        $nStmt = $conn->prepare("
+                            SELECT periodo1, periodo2, periodo3, periodo4, promedio_final 
+                            FROM notas WHERE matricula_id = ?
+                        ");
                         $nStmt->execute([$est['matricula_id']]);
                         $nota = $nStmt->fetch();
+
+                        $promedio = $nota['promedio_final'] ?? null;
+                        $estado = '';
+                        $badge = '';
+
+                        if ($promedio !== null) {
+                            if ($promedio >= 60) {
+                                $estado = 'Aprobado';
+                                $badge = 'bg-success';
+                            } else {
+                                $estado = 'Reprobado';
+                                $badge = 'bg-danger';
+                            }
+                        }
                     ?>
                     <tr>
                         <td class="fw-semibold ps-3"><?= h($est['nombre_completo']) ?></td>
                         <td class="text-center">
-                            <input type="number" step="0.01" min="0" max="100" 
-                                    name="notas[<?= $est['matricula_id'] ?>][p1]" 
-                                    value="<?= $nota['periodo1'] ?? '' ?>" 
-                                    class="form-control input-nota">
+                            <input type="number" step="0.01" min="0" max="100"
+                                   name="notas[<?= $est['matricula_id'] ?>][p1]"
+                                   value="<?= $nota['periodo1'] ?? '' ?>"
+                                   class="form-control input-nota">
                         </td>
                         <td class="text-center">
-                            <input type="number" step="0.01" min="0" max="100" 
-                                    name="notas[<?= $est['matricula_id'] ?>][p2]" 
-                                    value="<?= $nota['periodo2'] ?? '' ?>" 
-                                    class="form-control input-nota">
+                            <input type="number" step="0.01" min="0" max="100"
+                                   name="notas[<?= $est['matricula_id'] ?>][p2]"
+                                   value="<?= $nota['periodo2'] ?? '' ?>"
+                                   class="form-control input-nota">
                         </td>
                         <td class="text-center">
-                            <input type="number" step="0.01" min="0" max="100" 
-                                    name="notas[<?= $est['matricula_id'] ?>][p3]" 
-                                    value="<?= $nota['periodo3'] ?? '' ?>" 
-                                    class="form-control input-nota">
+                            <input type="number" step="0.01" min="0" max="100"
+                                   name="notas[<?= $est['matricula_id'] ?>][p3]"
+                                   value="<?= $nota['periodo3'] ?? '' ?>"
+                                   class="form-control input-nota">
+                        </td>
+                        <td class="text-center">
+                            <input type="number" step="0.01" min="0" max="100"
+                                   name="notas[<?= $est['matricula_id'] ?>][p4]"
+                                   value="<?= $nota['periodo4'] ?? '' ?>"
+                                   class="form-control input-nota">
+                        </td>
+                        <td class="text-center fw-bold">
+                            <?= $promedio !== null ? number_format($promedio, 2) : '—' ?>
+                        </td>
+                        <td class="text-center">
+                            <?php if ($estado): ?>
+                                <span class="badge <?= $badge ?>"><?= $estado ?></span>
+                            <?php else: ?>
+                                <span class="text-muted">—</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endwhile; ?>
 
                     <?php if (!$hayEstudiantes): ?>
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
+                            <td colspan="7" class="text-center text-muted py-5">
                                 No hay estudiantes matriculados en esta asignación.
                             </td>
                         </tr>

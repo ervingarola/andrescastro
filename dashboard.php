@@ -33,10 +33,18 @@ function obtenerDia($dia) {
 </head>
 <body class="bg-light">
 
+<!-- Botón menú móvil -->
+<button class="btn-menu-toggle" id="btnMenu">
+    <i class="bi bi-list"></i>
+</button>
+
+<!-- Fondo oscuro al abrir el menú -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <div class="container-fluid p-0">
     <div class="row g-0">
         <!-- SIDEBAR -->
-        <div class="col-lg-3 col-xl-2 sidebar text-white">
+        <div class="col-lg-3 col-xl-2 sidebar text-white" id="sidebar">
             <div class="text-center py-4 border-bottom border-light border-opacity-25">
                 <img src="img/logo_andrescastro.jpg" alt="Logo Escuela" class="img-fluid" style="max-height: 90px;">
                 <h5 class="mt-3 mb-0 fw-bold">Andrés Castro</h5>
@@ -65,12 +73,9 @@ function obtenerDia($dia) {
                         <a href="teacher/ingresar_notas.php" class="nav-link">
                             <i class="bi bi-clipboard-check"></i> Ingresar Notas
                         </a>
-                        
-
                         <a href="admin/matricular_estudiantes.php" class="nav-link">
                             <i class="bi bi-person-plus"></i> Matricular Estudiantes
                         </a>
-                    
                     <?php endif; ?>
 
                     <?php if(esAdmin()): ?>
@@ -78,7 +83,6 @@ function obtenerDia($dia) {
                         <a href="admin/usuarios.php" class="nav-link">
                             <i class="bi bi-people"></i> Gestión de Usuarios
                         </a>
-                        
                         <a href="admin/auditoria.php" class="nav-link">
                             <i class="bi bi-shield-lock"></i> Auditoría del Sistema
                         </a>
@@ -94,6 +98,11 @@ function obtenerDia($dia) {
                     <?php endif; ?>
 
                     <hr class="border-light opacity-50 my-3">
+
+                    <a href="cambiar_password.php" class="nav-link">
+                        <i class="bi bi-key"></i> Cambiar Contraseña
+                    </a>
+                    
                     <a href="logout.php" class="nav-link text-danger fw-bold">
                         <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
                     </a>
@@ -187,12 +196,30 @@ function obtenerDia($dia) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Reloj
     function actualizarReloj() {
         const ahora = new Date();
         document.getElementById('reloj').innerHTML = ahora.toLocaleTimeString('es-NI', {hour12: false});
     }
     setInterval(actualizarReloj, 1000);
     actualizarReloj();
+
+    // Menú responsive
+    const btnMenu = document.getElementById('btnMenu');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (btnMenu && sidebar && overlay) {
+        btnMenu.addEventListener('click', function () {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', function () {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    }
 </script>
 </body>
 </html>
