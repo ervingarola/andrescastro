@@ -185,7 +185,7 @@ function obtenerDia($dia) {
                 <div class="text-center mt-5 pt-4 border-top border-light">
                     <p class="text-muted mb-2">
                         <strong>Sistema desarrollado por:</strong><br>
-                        EDUPLUS+
+                        EDU+
                     </p>
                     <small class="text-muted">Ingeniería en Sistemas • Tola, Rivas • 2025</small>
                 </div>
