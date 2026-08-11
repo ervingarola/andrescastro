@@ -97,15 +97,17 @@ function obtenerDia($dia) {
                         </a>
                     <?php endif; ?>
 
-                    <hr class="border-light opacity-50 my-3">
+                        <hr class="border-light opacity-50 my-3">
 
+                        <?php if (!esAdmin()): ?>
                     <a href="cambiar_password.php" class="nav-link">
                         <i class="bi bi-key"></i> Cambiar Contraseña
-                    </a>
-                    
-                    <a href="logout.php" class="nav-link text-danger fw-bold">
-                        <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-                    </a>
+                </a>
+            <?php endif; ?>
+
+<a href="logout.php" class="nav-link text-danger fw-bold">
+    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+</a>
                 </nav>
             </div>
         </div>
